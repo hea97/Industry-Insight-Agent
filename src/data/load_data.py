@@ -13,6 +13,19 @@ DATA_FILES = {
     "google_daily_news": "Google_Daily_News.csv",
 }
 
+RAW_DATASET_NAMES = tuple(
+    name for name in DATA_FILES if not name.endswith("_categorized")
+)
+CATEGORIZED_DATASET_NAMES = tuple(
+    name for name in DATA_FILES if name.endswith("_categorized")
+)
+
+DISPLAY_COLUMN_CANDIDATES = {
+    "title": ["title", "Title", "headline"],
+    "content": ["content", "Content", "summary"],
+    "industry": ["industry", "Industry", "Category", "category", "Tag", "tag"],
+}
+
 
 def get_data_path(name: str) -> Path:
     if name not in DATA_FILES:
@@ -22,6 +35,20 @@ def get_data_path(name: str) -> Path:
         )
 
     return DATA_DIR / DATA_FILES[name]
+
+
+def list_available_datasets(
+    *, raw_only: bool = False, categorized_only: bool = False
+) -> tuple[str, ...]:
+    if raw_only and categorized_only:
+        raise ValueError("raw_only and categorized_only cannot both be True.")
+
+    if raw_only:
+        return RAW_DATASET_NAMES
+    if categorized_only:
+        return CATEGORIZED_DATASET_NAMES
+
+    return tuple(DATA_FILES)
 
 
 def load_dataset(name: str, **kwargs) -> pd.DataFrame:
@@ -35,11 +62,17 @@ def load_all_datasets() -> dict[str, pd.DataFrame]:
     }
 
 
-DISPLAY_COLUMN_CANDIDATES = {
-    "title": ["title", "Title", "headline"],
-    "content": ["content", "Content", "summary"],
-    "industry": ["industry", "Industry", "Category", "category", "Tag", "tag"],
-}
+def validate_required_columns(
+    df: pd.DataFrame, required_columns: list[str], dataset_name: str
+) -> None:
+    missing_columns = [column for column in required_columns if column not in df.columns]
+    if missing_columns:
+        missing = ", ".join(missing_columns)
+        available = ", ".join(df.columns.astype(str))
+        raise ValueError(
+            f"Dataset '{dataset_name}' is missing required columns: {missing}. "
+            f"Available columns: {available}"
+        )
 
 
 def _find_first_matching_column(
